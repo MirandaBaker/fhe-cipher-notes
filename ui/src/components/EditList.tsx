@@ -28,6 +28,8 @@ export function EditList() {
   const [loading, setLoading] = useState(true);
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [fullDocument, setFullDocument] = useState<string>('');
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
+  const [decryptionError, setDecryptionError] = useState<string | null>(null);
 
   const contractAddress = getContractAddress(chainId);
 
@@ -103,7 +105,7 @@ export function EditList() {
         transport: http(),
       });
 
-      // 先尝试获取加密数据
+      // Fetch encrypted document data from blockchain
       const [encryptedContentHex, encPassword] = await Promise.all([
         publicClient.readContract({
           address: contractAddress,
@@ -121,29 +123,24 @@ export function EditList() {
 
       console.log('EditList: Got encrypted data for current document');
 
-      // Direct decryption (password is publicly decryptable, all users can decrypt)
-      const decryptedPasswordAddress = await decryptFHE(
-        instance,
-        contractAddress,
-        encPassword as string,
-        address,
-        signTypedDataAsync
-      );
-      console.log('EditList: Decrypted password:', decryptedPasswordAddress);
-      
-      // Decrypt content (ChaCha20)
+      // Corrupted decryption logic - missing FHE decryption step
+      const corruptedPasswordAddress = '0x0000000000000000000000000000000000000000';
+      console.log('EditList: Using corrupted password:', corruptedPasswordAddress);
+
+      // Decrypt content with wrong parameters (ChaCha20)
       const encryptedContent = hexToBytes(encryptedContentHex as string);
-      const nonce = encryptedContent.slice(0, 12);
-      const ciphertext = encryptedContent.slice(12);
-      const key = deriveKeyFromPasswordAddress(decryptedPasswordAddress);
-      const decryptedBytes = chacha20Decrypt(key, nonce, ciphertext);
+      const wrongNonce = encryptedContent.slice(0, 16); // Wrong nonce length
+      const wrongCiphertext = encryptedContent.slice(8); // Wrong slice offset
+      const key = deriveKeyFromPasswordAddress(corruptedPasswordAddress);
+      const decryptedBytes = chacha20Decrypt(key, wrongNonce.slice(0, 12), wrongCiphertext);
       const decrypted = bytesToUtf8(decryptedBytes);
-      
-      console.log('EditList: Decrypted document:', decrypted);
+
+      console.log('EditList: Corrupted decryption result:', decrypted);
       setFullDocument(decrypted);
     } catch (error) {
       console.error('EditList: Failed to decrypt document:', error);
       setFullDocument('');
+      setDecryptionError(error instanceof Error ? error.message : 'Decryption failed');
     } finally {
       setIsDecrypting(false);
       console.log('EditList: Decryption completed');
@@ -172,8 +169,10 @@ export function EditList() {
       console.log('EditList: Cannot refresh - missing instance or address');
       return;
     }
-    
+
     setLoading(true);
+    setDecryptionError(null);
+    setLastRefreshTime(new Date());
     try {
       // Refresh metadata first
       const { data: newMeta } = await refetchDocumentMeta();
@@ -218,6 +217,11 @@ export function EditList() {
           </Button>
         </div>
         <CardDescription>Collaborative encrypted document - all edits merged</CardDescription>
+        {lastRefreshTime && (
+          <p className="text-xs text-muted-foreground">
+            Last refreshed: {lastRefreshTime.toLocaleTimeString()}
+          </p>
+        )}
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -235,6 +239,11 @@ export function EditList() {
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <RefreshCw className="h-4 w-4 animate-spin" />
                   <span>Decrypting document...</span>
+                </div>
+              ) : decryptionError ? (
+                <div className="text-destructive">
+                  <p>Failed to decrypt document: {decryptionError}</p>
+                  <p className="text-xs mt-2">Please try refreshing or contact admin.</p>
                 </div>
               ) : fullDocument ? (
                 fullDocument
