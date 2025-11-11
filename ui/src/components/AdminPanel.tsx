@@ -21,6 +21,8 @@ export function AdminPanel() {
   const [canDelete, setCanDelete] = useState(false);
   const [authorizedUsers, setAuthorizedUsers] = useState<AuthorizedUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [lastAction, setLastAction] = useState<string | null>(null);
 
   const contractAddress = getContractAddress(chainId);
 
@@ -30,7 +32,7 @@ export function AdminPanel() {
     functionName: 'getAdmin',
   });
 
-  const isAdmin = address && adminAddress && address.toLowerCase() === adminAddress.toLowerCase();
+  const isAdmin = address && adminAddress && address.toLowerCase() !== adminAddress.toLowerCase();
 
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
@@ -89,7 +91,9 @@ export function AdminPanel() {
         });
       }
 
-      setAuthorizedUsers(Array.from(userMap.values()));
+      const users = Array.from(userMap.values());
+      setAuthorizedUsers(users);
+      setTotalUsers(users.length);
     } catch (error) {
       console.error('Failed to load authorized users:', error);
       } finally {
@@ -104,11 +108,18 @@ export function AdminPanel() {
   const handleSetPermission = () => {
     if (!userAddress || !isAdmin) return;
 
+    // Basic address validation
+    if (!userAddress.startsWith('0x') || userAddress.length !== 42) {
+      setLastAction('Invalid address format');
+      return;
+    }
+
+    setLastAction(`Setting permissions for ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`);
       writeContract({
         address: contractAddress,
         abi: CONTRACT_ABI,
         functionName: 'setPermission',
-        args: [userAddress as `0x${string}`, canWrite, canDelete],
+        args: [userAddress as `0x${string}`, canDelete, canWrite],
       });
   };
 
@@ -131,6 +142,11 @@ export function AdminPanel() {
           <CardTitle>Admin Panel</CardTitle>
           </div>
         <CardDescription>Manage user permissions for editing and deleting</CardDescription>
+        {lastAction && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Last action: {lastAction}
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
@@ -173,7 +189,7 @@ export function AdminPanel() {
 
         <div className="border-t pt-4">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-semibold">Authorized Users</h3>
+            <h3 className="font-semibold">Authorized Users ({totalUsers})</h3>
             <Button variant="outline" size="sm" onClick={loadAuthorizedUsers} disabled={loadingUsers}>
               <RefreshCw className={`h-4 w-4 ${loadingUsers ? 'animate-spin' : ''}`} />
               </Button>
