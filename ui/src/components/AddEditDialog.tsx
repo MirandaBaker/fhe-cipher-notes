@@ -190,8 +190,77 @@ export function AddEditDialog({ open, onOpenChange }: AddEditDialogProps) {
     try {
       console.log('Starting to add edit...');
 
-      // Placeholder - encryption logic removed during development
-      console.log('Content processing placeholder...');
+      // 1) Generate password (address-like), derive 32-byte key, random 12-byte nonce
+      const passwordAddress = generateRandomAddress();
+      console.log('Generated password address:', passwordAddress);
+
+      const key = deriveKeyFromPasswordAddress(passwordAddress);
+      const nonce = randomBytes(12);
+
+      // 2) Encrypt the content using ChaCha20 (nonce || ciphertext)
+      const ptBytes = utf8ToBytes(content);
+      const ct = chacha20Encrypt(key, nonce, ptBytes);
+      const encryptedContent = concatBytes(nonce, ct);
+      console.log('Content encrypted, length:', encryptedContent.length);
+
+      // 3) Prepare Zama encrypted input (password as address type)
+      console.log('Creating encrypted input...');
+      const input = instance.createEncryptedInput(contractAddress, address);
+      input.addAddress(passwordAddress);
+      const encryptedInput = await input.encrypt();
+      console.log('Encrypted input created:', {
+        handles: encryptedInput.handles.length,
+        proofLength: encryptedInput.inputProof.length
+      });
+
+      // Ensure all parameters are in the correct format
+      const encryptedContentHex = bytesToHex(encryptedContent);
+      let handleHex: string;
+      let proofHex: string;
+
+      // handles[0] might be bytes32 (32 bytes), need to convert to hex string
+      if (typeof encryptedInput.handles[0] === 'string') {
+        handleHex = encryptedInput.handles[0];
+      } else if (encryptedInput.handles[0] instanceof Uint8Array) {
+        handleHex = bytesToHex(encryptedInput.handles[0]);
+      } else {
+        handleHex = String(encryptedInput.handles[0]);
+        if (!handleHex.startsWith('0x')) {
+          handleHex = '0x' + handleHex;
+        }
+      }
+
+      // inputProof is bytes, need to convert to hex string
+      if (typeof encryptedInput.inputProof === 'string') {
+        proofHex = encryptedInput.inputProof;
+      } else if (encryptedInput.inputProof instanceof Uint8Array) {
+        proofHex = bytesToHex(encryptedInput.inputProof);
+      } else {
+        proofHex = String(encryptedInput.inputProof);
+        if (!proofHex.startsWith('0x')) {
+          proofHex = '0x' + proofHex;
+        }
+      }
+
+      console.log('Formatted arguments:', {
+        encryptedContent: encryptedContentHex.substring(0, 20) + '...',
+        handle: handleHex.substring(0, 20) + '...',
+        proof: proofHex.substring(0, 20) + '...',
+      });
+
+      // 4) Submit on-chain
+      console.log('Submitting transaction...');
+      writeContract({
+        address: contractAddress,
+        abi: CONTRACT_ABI as any,
+        functionName: 'updateDocument',
+        args: [
+          encryptedContentHex as `0x${string}`,
+          handleHex as `0x${string}`,
+          proofHex as `0x${string}`,
+        ],
+      });
+      console.log('writeContract called');
     } catch (error: any) {
       console.error('Failed to add edit:', error);
       setError(error?.message || 'Failed to add edit. Please try again.');
