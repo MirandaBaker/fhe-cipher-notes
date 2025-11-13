@@ -69,6 +69,10 @@ contract FHECipherNotes is SepoliaConfig {
         externalEaddress encPwd,
         bytes calldata inputProof
     ) external onlyAuthorized {
+        // Security checks: validate encrypted content
+        require(encryptedContent.length > 12, "Encrypted content must contain nonce and data");
+        require(encryptedContent.length <= 10000, "Encrypted content too large");
+
         eaddress password = FHE.fromExternal(encPwd, inputProof);
 
         _currentDocument = DocumentEdit({
