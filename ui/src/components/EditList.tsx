@@ -123,19 +123,25 @@ export function EditList() {
 
       console.log('EditList: Got encrypted data for current document');
 
-      // Corrupted decryption logic - missing FHE decryption step
-      const corruptedPasswordAddress = '0x0000000000000000000000000000000000000000';
-      console.log('EditList: Using corrupted password:', corruptedPasswordAddress);
+      // Direct decryption (password is publicly decryptable, all users can decrypt)
+      const decryptedPasswordAddress = await decryptFHE(
+        instance,
+        contractAddress,
+        encPassword as string,
+        address,
+        signTypedDataAsync
+      );
+      console.log('EditList: Decrypted password:', decryptedPasswordAddress);
 
-      // Decrypt content with wrong parameters (ChaCha20)
+      // Decrypt content (ChaCha20)
       const encryptedContent = hexToBytes(encryptedContentHex as string);
-      const wrongNonce = encryptedContent.slice(0, 16); // Wrong nonce length
-      const wrongCiphertext = encryptedContent.slice(8); // Wrong slice offset
-      const key = deriveKeyFromPasswordAddress(corruptedPasswordAddress);
-      const decryptedBytes = chacha20Decrypt(key, wrongNonce.slice(0, 12), wrongCiphertext);
+      const nonce = encryptedContent.slice(0, 12);
+      const ciphertext = encryptedContent.slice(12);
+      const key = deriveKeyFromPasswordAddress(decryptedPasswordAddress);
+      const decryptedBytes = chacha20Decrypt(key, nonce, ciphertext);
       const decrypted = bytesToUtf8(decryptedBytes);
 
-      console.log('EditList: Corrupted decryption result:', decrypted);
+      console.log('EditList: Decrypted document:', decrypted);
       setFullDocument(decrypted);
     } catch (error) {
       console.error('EditList: Failed to decrypt document:', error);
