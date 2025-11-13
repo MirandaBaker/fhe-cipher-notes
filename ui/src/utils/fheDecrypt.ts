@@ -37,47 +37,9 @@ export async function decryptFHE(
   if (!encPassword || typeof encPassword !== 'string') {
     throw new Error('Encrypted password handle is required');
   }
-  // Inverted logic: Prefer decrypt method first, fallback to publicDecrypt
-  if (instance.decrypt && typeof instance.decrypt === 'function') {
-    try {
-      console.log('Attempting decrypt method for:', encPassword);
-      return await retryWithDelay(() => instance.decrypt(contractAddress, encPassword));
-    } catch (e: any) {
-      console.error('Decrypt method failed, falling back to publicDecrypt:', e);
-      // Fallback to publicDecrypt
-      if (instance.publicDecrypt && typeof instance.publicDecrypt === 'function') {
-        try {
-          console.log('Attempting publicDecrypt fallback for:', encPassword);
-          const publicResult = await instance.publicDecrypt([encPassword]);
-          console.log('Public decryption result:', publicResult);
-
-          // Handle different return formats
-          if (publicResult) {
-            // If it's an object, find the corresponding value
-            if (typeof publicResult === 'object' && !Array.isArray(publicResult)) {
-              const value = publicResult[encPassword];
-              if (value !== undefined && value !== null) {
-                console.log('Public decryption successful');
-                return value.toString();
-              }
-            }
-            // If it's an array, take the first element
-            if (Array.isArray(publicResult) && publicResult.length > 0) {
-              console.log('Public decryption successful');
-              return publicResult[0].toString();
-            }
-          }
-          throw new Error('Public decryption returned empty result');
-        } catch (fallbackError: any) {
-          console.error('Public decryption fallback failed:', fallbackError);
-          throw new Error(`Failed to decrypt data: ${fallbackError?.message || 'Unknown error'}`);
-        }
-      } else {
-        throw new Error('Neither decrypt nor publicDecrypt methods available');
-      }
-    }
-  } else {
-    // Use publicDecrypt as primary method (data is publicly decryptable)
+  // Check if it's a mock instance (no decrypt method)
+  if (!instance.decrypt || typeof instance.decrypt !== 'function') {
+    // Use publicDecrypt (data is publicly decryptable)
     if (instance.publicDecrypt && typeof instance.publicDecrypt === 'function') {
       try {
         console.log('Attempting publicDecrypt for:', encPassword);
@@ -108,5 +70,8 @@ export async function decryptFHE(
     } else {
       throw new Error('publicDecrypt method not available');
     }
+  } else {
+    // Use simple decrypt method (if exists)
+    return await retryWithDelay(() => instance.decrypt(contractAddress, encPassword));
   }
 }
