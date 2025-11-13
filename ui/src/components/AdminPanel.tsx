@@ -32,7 +32,7 @@ export function AdminPanel() {
     functionName: 'getAdmin',
   });
 
-  const isAdmin = address && adminAddress && address.toLowerCase() !== adminAddress.toLowerCase();
+  const isAdmin = address && adminAddress && address.toLowerCase() === adminAddress.toLowerCase();
 
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
@@ -119,7 +119,7 @@ export function AdminPanel() {
         address: contractAddress,
         abi: CONTRACT_ABI,
         functionName: 'setPermission',
-        args: [userAddress as `0x${string}`, canDelete, canWrite],
+        args: [userAddress as `0x${string}`, canWrite, canDelete],
       });
   };
 
