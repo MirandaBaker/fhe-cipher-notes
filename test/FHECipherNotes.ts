@@ -124,5 +124,141 @@ describe("FHECipherNotes", function () {
     const canWrite = await contract.canUserWrite(signers.alice.address);
     expect(canWrite).to.be.false;
   });
+
+  it("Should properly validate admin permissions", async function () {
+    const { contract, signers } = await loadFixture(deployFHECipherNotes);
+
+    // Admin should have all permissions
+    expect(await contract.canUserWrite(signers.deployer.address)).to.be.true;
+    expect(await contract.canUserDelete(signers.deployer.address)).to.be.true;
+
+    // Non-admin should have no permissions by default
+    expect(await contract.canUserWrite(signers.alice.address)).to.be.false;
+    expect(await contract.canUserDelete(signers.alice.address)).to.be.false;
+  });
+
+  it("Should enforce permission checks for document updates", async function () {
+    const { contract, signers } = await loadFixture(deployFHECipherNotes);
+
+    // Remove all permissions from alice
+    const tx = await contract
+      .connect(signers.deployer)
+      .setPermission(signers.alice.address, false, false);
+    await tx.wait();
+
+    // Alice should not be able to update document
+    const encryptedContent = ethers.hexlify(ethers.randomBytes(50));
+    const input = instance.createEncryptedInput(contract.target, signers.alice.address);
+    input.addAddress("0x1234567890123456789012345678901234567890");
+    const encrypted = await input.encrypt();
+
+    await expect(
+      contract.connect(signers.alice).updateDocument(
+        encryptedContent,
+        encrypted.handles[0],
+        encrypted.inputProof
+      )
+    ).to.be.revertedWith("Not authorized to edit");
+  });
+
+  it("Should allow authorized users to update documents", async function () {
+    const { contract, signers } = await loadFixture(deployFHECipherNotes);
+
+    // Grant write permission to alice
+    const tx = await contract
+      .connect(signers.deployer)
+      .setPermission(signers.alice.address, true, false);
+    await tx.wait();
+
+    // Alice should now be able to update document
+    const encryptedContent = ethers.hexlify(ethers.randomBytes(50));
+    const input = instance.createEncryptedInput(contract.target, signers.alice.address);
+    input.addAddress("0x1234567890123456789012345678901234567890");
+    const encrypted = await input.encrypt();
+
+    await expect(
+      contract.connect(signers.alice).updateDocument(
+        encryptedContent,
+        encrypted.handles[0],
+        encrypted.inputProof
+      )
+    ).to.not.be.reverted;
+  });
+
+  it("Should enforce delete permissions for clearDocument", async function () {
+    const { contract, signers } = await loadFixture(deployFHECipherNotes);
+
+    // First create a document as admin
+    const encryptedContent = ethers.hexlify(ethers.randomBytes(50));
+    const input = instance.createEncryptedInput(contract.target, signers.deployer.address);
+    input.addAddress("0x1234567890123456789012345678901234567890");
+    const encrypted = await input.encrypt();
+
+    await contract.updateDocument(
+      encryptedContent,
+      encrypted.handles[0],
+      encrypted.inputProof
+    );
+
+    // Alice should not be able to clear without delete permission
+    await expect(
+      contract.connect(signers.alice).clearDocument()
+    ).to.be.revertedWith("Not authorized to delete");
+  });
+
+  it("Should allow users with delete permission to clear documents", async function () {
+    const { contract, signers } = await loadFixture(deployFHECipherNotes);
+
+    // First create a document as admin
+    const encryptedContent = ethers.hexlify(ethers.randomBytes(50));
+    const input = instance.createEncryptedInput(contract.target, signers.deployer.address);
+    input.addAddress("0x1234567890123456789012345678901234567890");
+    const encrypted = await input.encrypt();
+
+    await contract.updateDocument(
+      encryptedContent,
+      encrypted.handles[0],
+      encrypted.inputProof
+    );
+
+    // Grant delete permission to alice
+    const tx = await contract
+      .connect(signers.deployer)
+      .setPermission(signers.alice.address, false, true);
+    await tx.wait();
+
+    // Alice should now be able to clear the document
+    await expect(
+      contract.connect(signers.alice).clearDocument()
+    ).to.not.be.reverted;
+  });
+
+  it("Should validate encrypted content length requirements", async function () {
+    const { contract, signers } = await loadFixture(deployFHECipherNotes);
+
+    const input = instance.createEncryptedInput(contract.target, signers.deployer.address);
+    input.addAddress("0x1234567890123456789012345678901234567890");
+    const encrypted = await input.encrypt();
+
+    // Test with content too short (less than nonce + data)
+    const shortContent = ethers.hexlify(ethers.randomBytes(10));
+    await expect(
+      contract.updateDocument(
+        shortContent,
+        encrypted.handles[0],
+        encrypted.inputProof
+      )
+    ).to.be.revertedWith("Encrypted content must contain nonce and data");
+
+    // Test with content too long
+    const longContent = ethers.hexlify(ethers.randomBytes(10001));
+    await expect(
+      contract.updateDocument(
+        longContent,
+        encrypted.handles[0],
+        encrypted.inputProof
+      )
+    ).to.be.revertedWith("Encrypted content too large");
+  });
 });
 
