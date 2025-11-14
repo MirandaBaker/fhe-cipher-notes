@@ -300,8 +300,24 @@ export function AddEditDialog({ open, onOpenChange }: AddEditDialogProps) {
         </DialogHeader>
         <div className="space-y-4 py-4">
           {error && (
-            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-              {error}
+            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive border border-destructive/20">
+              <div className="flex items-start gap-2">
+                <div className="text-destructive mt-0.5">⚠️</div>
+                <div>
+                  <p className="font-medium">Error</p>
+                  <p className="text-destructive/80 mt-1">{error}</p>
+                  {error.includes('permission') && (
+                    <p className="text-xs text-destructive/60 mt-2">
+                      Contact the admin to request write permissions.
+                    </p>
+                  )}
+                  {error.includes('content') && (
+                    <p className="text-xs text-destructive/60 mt-2">
+                      Please ensure your content is between 10-10,000 characters.
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
           <div className="space-y-2">

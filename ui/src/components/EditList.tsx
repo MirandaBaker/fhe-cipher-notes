@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useReadContract, useAccount, useSignTypedData } from 'wagmi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { FileText } from 'lucide-react';
 import { getContractAddress, CONTRACT_ABI } from '@/config/contracts';
 import { useChainId } from 'wagmi';
 import { FileText, RefreshCw } from 'lucide-react';
@@ -240,21 +241,53 @@ export function EditList() {
                 {isDecrypting && ' (decrypting...)'}
               </p>
             </div>
-            <div className="mt-3 rounded-md bg-muted p-4 text-sm whitespace-pre-wrap min-h-[200px]">
+            <div className="mt-3 rounded-md bg-muted p-4 text-sm whitespace-pre-wrap min-h-[200px] border">
               {isDecrypting && !fullDocument ? (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  <span>Decrypting document...</span>
+                <div className="flex items-center gap-3 text-muted-foreground">
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  <div>
+                    <p className="font-medium">Decrypting document...</p>
+                    <p className="text-xs mt-1">This may take a few moments</p>
+                  </div>
                 </div>
               ) : decryptionError ? (
-                <div className="text-destructive">
-                  <p>Failed to decrypt document: {decryptionError}</p>
-                  <p className="text-xs mt-2">Please try refreshing or contact admin.</p>
+                <div className="bg-destructive/10 border border-destructive/20 rounded-md p-4">
+                  <div className="flex items-start gap-2">
+                    <div className="text-destructive mt-0.5">🔒</div>
+                    <div>
+                      <p className="font-medium text-destructive">Decryption Failed</p>
+                      <p className="text-destructive/80 mt-1 text-sm">{decryptionError}</p>
+                      <div className="mt-3 flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRefresh}
+                          disabled={isDecrypting}
+                        >
+                          <RefreshCw className={`h-3 w-3 mr-1 ${isDecrypting ? 'animate-spin' : ''}`} />
+                          Try Again
+                        </Button>
+                        <p className="text-xs text-muted-foreground self-center">
+                          If the problem persists, contact support.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : fullDocument ? (
-                fullDocument
+                <div className="relative">
+                  <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
+                    {fullDocument}
+                  </pre>
+                  <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                    {fullDocument.length} chars
+                  </div>
+                </div>
               ) : (
-                <span className="text-muted-foreground">No content available</span>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <FileText className="h-5 w-5" />
+                  <span>No content available</span>
+                </div>
               )}
             </div>
           </div>
