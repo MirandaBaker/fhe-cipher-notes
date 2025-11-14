@@ -42,6 +42,15 @@ contract FHECipherNotes is SepoliaConfig {
         _;
     }
 
+    modifier onlyAuthorizedToDelete() {
+        require(
+            msg.sender == admin ||
+            (msg.sender == _currentDocument.editor && permissions[msg.sender].canDelete),
+            "Not authorized to delete"
+        );
+        _;
+    }
+
     constructor() {
         admin = msg.sender;
         permissions[msg.sender] = Permission(true, true);
@@ -93,13 +102,8 @@ contract FHECipherNotes is SepoliaConfig {
     }
 
     /// @notice Clear the document (only admin or users with delete permission)
-    function clearDocument() external {
+    function clearDocument() external onlyAuthorizedToDelete {
         require(_currentDocument.exists, "Document does not exist");
-        require(
-            msg.sender == admin || 
-            (msg.sender == _currentDocument.editor && permissions[msg.sender].canDelete),
-            "Not authorized to clear"
-        );
         _currentDocument.exists = false;
     }
 
