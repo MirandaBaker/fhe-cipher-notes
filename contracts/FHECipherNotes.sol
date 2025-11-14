@@ -25,7 +25,7 @@ contract FHECipherNotes is SepoliaConfig {
     DocumentEdit private _currentDocument; // Single document, overwritten on each update
     mapping(address => Permission) public permissions;
     
-    event DocumentUpdated(address indexed editor, uint64 timestamp);
+    event DocumentUpdated(address indexed editor, uint64 indexed timestamp);
     event PermissionUpdated(address indexed user, bool canWrite, bool canDelete);
     event AdminChanged(address indexed oldAdmin, address indexed newAdmin);
 
