@@ -20,12 +20,25 @@ async function retryWithDelay<T>(
   }
   throw new Error('Max retries exceeded');
 }
+interface FHEInstance {
+  decrypt?: (contractAddress: string, encryptedData: string) => Promise<string>;
+  publicDecrypt?: (handles: string[]) => Promise<string | string[] | { [key: string]: string }>;
+}
+
+interface SignTypedDataFunction {
+  (args: {
+    domain: any;
+    types: any;
+    message: any;
+  }): Promise<string>;
+}
+
 export async function decryptFHE(
-  instance: any,
+  instance: FHEInstance,
   contractAddress: string,
   encPassword: string,
   _userAddress: string,
-  _signTypedDataFn: (args: any) => Promise<string>
+  _signTypedDataFn: SignTypedDataFunction
 ): Promise<string> {
   // Enhanced input validation
   if (!instance) {

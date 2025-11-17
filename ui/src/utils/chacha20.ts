@@ -61,10 +61,16 @@ function chacha20Block(key: Uint8Array, counter: number, nonce: Uint8Array): Uin
 }
 
 export function chacha20Encrypt(key: Uint8Array, nonce: Uint8Array, plaintext: Uint8Array): Uint8Array {
-  // Enhanced input validation
-  if (!key || key.length !== 32) throw new Error('ChaCha20 key must be exactly 32 bytes');
-  if (!nonce || nonce.length !== 12) throw new Error('ChaCha20 nonce must be exactly 12 bytes');
-  if (!plaintext) throw new Error('Plaintext cannot be null or undefined');
+  // Enhanced input validation with type guards
+  if (!(key instanceof Uint8Array) || key.length !== 32) {
+    throw new TypeError('ChaCha20 key must be a Uint8Array of exactly 32 bytes');
+  }
+  if (!(nonce instanceof Uint8Array) || nonce.length !== 12) {
+    throw new TypeError('ChaCha20 nonce must be a Uint8Array of exactly 12 bytes');
+  }
+  if (!(plaintext instanceof Uint8Array)) {
+    throw new TypeError('Plaintext must be a Uint8Array');
+  }
   if (plaintext.length === 0) return new Uint8Array(0);
 
   const out = new Uint8Array(plaintext.length);

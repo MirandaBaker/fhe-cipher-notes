@@ -151,7 +151,7 @@ function AddEditDialog({ open, onOpenChange }: AddEditDialogProps) {
     }
   }, [isSuccess, onOpenChange]);
 
-  const deriveKeyFromPasswordAddress = (passwordAddress: string): Uint8Array => {
+  const deriveKeyFromPasswordAddress = useCallback((passwordAddress: string): Uint8Array => {
     const hash = keccak256(toUtf8Bytes(passwordAddress.toLowerCase()));
     const key = new Uint8Array(32);
     for (let i = 0; i < 32; i++) key[i] = parseInt(hash.slice(2 + i * 2, 4 + i * 2), 16);

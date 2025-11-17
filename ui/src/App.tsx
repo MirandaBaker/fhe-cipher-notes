@@ -11,12 +11,18 @@ import { AddEditDialog } from './components/AddEditDialog';
 import { GuidePanel } from './components/GuidePanel';
 import { Button } from './components/ui/button';
 import { Plus, FileText, BookOpen } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 
 const queryClient = new QueryClient();
 
 type ViewMode = 'document' | 'guide';
+
+interface AppState {
+  viewMode: ViewMode;
+  showAddDialog: boolean;
+  showAdminPanel: boolean;
+}
 
 function AppContent() {
   const { isConnected } = useAccount();
