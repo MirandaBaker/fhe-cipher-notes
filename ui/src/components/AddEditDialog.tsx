@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSignTypedData } from 'wagmi';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ interface AddEditDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function AddEditDialog({ open, onOpenChange }: AddEditDialogProps) {
+function AddEditDialog({ open, onOpenChange }: AddEditDialogProps) {
   const { address } = useAccount();
   const chainId = useChainId();
   const { instance, isLoading: zamaLoading, error: zamaError } = useZamaInstance();
@@ -270,14 +270,20 @@ export function AddEditDialog({ open, onOpenChange }: AddEditDialogProps) {
     // Errors are handled via writeError, success is handled via isSuccess
   };
 
-  const validateContent = (text: string): string | null => {
+  const validateContent = useCallback((text: string): string | null => {
     if (!text.trim()) return 'Content cannot be empty';
     if (text.length < 10) return 'Content must be at least 10 characters';
     if (text.length > 10000) return 'Content must be less than 10,000 characters';
     return null;
-  };
+  }, []);
 
-  const canSubmit = instance && address && content.trim() && canWrite && !isPending && !isConfirming && !isSubmitting && content.length >= 10 && content.length <= 10000;
+  const validationError = useMemo(() => validateContent(content), [content, validateContent]);
+
+  const canSubmit = useMemo(() =>
+    instance && address && content.trim() && canWrite && !isPending && !isConfirming && !isSubmitting &&
+    content.length >= 10 && content.length <= 10000 && !validationError,
+    [instance, address, content, canWrite, isPending, isConfirming, isSubmitting, validationError]
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -353,4 +359,6 @@ export function AddEditDialog({ open, onOpenChange }: AddEditDialogProps) {
     </Dialog>
   );
 }
+
+export default memo(AddEditDialog);
 

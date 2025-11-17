@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useReadContract, useAccount, useSignTypedData } from 'wagmi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ interface Edit {
   content?: string;
 }
 
-export function EditList() {
+function EditList() {
   const { address } = useAccount();
   const chainId = useChainId();
   const { instance } = useZamaInstance();
@@ -73,10 +73,10 @@ export function EditList() {
         console.error('Failed to load document:', error);
         setEdits([]);
         setFullDocument('');
-      } finally {
-        setLoading(false);
-      }
-    };
+    } finally {
+      setLoading(false);
+    }
+  }, [instance, address, contractAddress, signTypedDataAsync, refetchDocumentMeta]);
 
     loadDocument();
   }, [documentMeta, contractAddress, chainId]);
@@ -170,7 +170,7 @@ export function EditList() {
     );
   }
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     console.log('EditList: Manual refresh triggered');
     if (!instance || !address) {
       console.log('EditList: Cannot refresh - missing instance or address');
@@ -209,7 +209,9 @@ export function EditList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [instance, address, contractAddress, signTypedDataAsync]);
+
+  const memoizedDecryptCurrentDocument = useCallback(decryptCurrentDocument, [decryptCurrentDocument]);
 
   return (
     <Card>
@@ -309,4 +311,6 @@ export function EditList() {
     </Card>
   );
 }
+
+export default memo(EditList);
 
