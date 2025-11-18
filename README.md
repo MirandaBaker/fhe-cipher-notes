@@ -45,9 +45,198 @@ FHE Cipher Notes is a decentralized application that enables multiple users to c
 ### Local Network (Hardhat)
 - **Chain ID**: 31337 or 1337
 - **Contract Address**: `0x5FbDB2315678afecb367f032d93F642f64180aa3`
+- **RPC URL**: `http://localhost:8545`
 
 ### Sepolia Testnet
 - **Chain ID**: 11155111
+- **Contract Address**: `0x0e4a3add37040add91e983c36720C7B2f0a4cDC5`
+- **Block Explorer**: [Etherscan Sepolia](https://sepolia.etherscan.io/)
+
+### Mainnet (Planned)
+- **Chain ID**: 1
+- **Contract Address**: TBD
+- **Block Explorer**: [Etherscan](https://etherscan.io/)
+
+## 🔧 Environment Variables
+
+Create a `.env` file in the project root with the following variables:
+
+```bash
+# Private Key (without 0x prefix)
+PRIVATE_KEY=your_private_key_here
+
+# RPC URLs (optional, fallbacks provided)
+SEPOLIA_RPC_URL=https://sepolia.infura.io/v3/your_infura_key
+MAINNET_RPC_URL=https://mainnet.infura.io/v3/your_infura_key
+POLYGON_RPC_URL=https://polygon-mainnet.g.alchemy.com/v2/your_alchemy_key
+
+# API Keys for deployment verification
+INFURA_API_KEY=your_infura_api_key
+ALCHEMY_API_KEY=your_alchemy_api_key
+ETHERSCAN_API_KEY=your_etherscan_api_key
+POLYGONSCAN_API_KEY=your_polygonscan_api_key
+
+# FHEVM Configuration
+FHEVM_NETWORK_URL=http://localhost:8545
+```
+
+## 📚 API Documentation
+
+### Smart Contract Functions
+
+#### Permission Management
+
+```solidity
+// Set permissions for a user (admin only)
+function setPermission(address user, bool canWrite, bool canDelete) external onlyAdmin
+
+// Check if user has write permission
+function canUserWrite(address user) external view returns (bool)
+
+// Check if user has delete permission
+function canUserDelete(address user) external view returns (bool)
+
+// Get admin address
+function getAdmin() external view returns (address)
+```
+
+#### Document Operations
+
+```solidity
+// Update document with encrypted content (authorized users only)
+function updateDocument(
+    bytes calldata encryptedContent,
+    externalEaddress encPwd,
+    bytes calldata inputProof
+) external onlyAuthorized
+
+// Clear current document (admin or authorized users)
+function clearDocument() external onlyAuthorizedToDelete
+
+// Get document metadata
+function getDocumentMeta() external view returns (address editor, uint64 timestamp, bool exists)
+
+// Get encrypted document content
+function getDocumentContent() external view returns (bytes memory)
+
+// Get FHE-encrypted password
+function getDocumentPassword() external view returns (eaddress)
+```
+
+#### Events
+
+```solidity
+// Emitted when document is updated
+event DocumentUpdated(address indexed editor, uint64 indexed timestamp)
+
+// Emitted when user permissions change
+event PermissionUpdated(address indexed user, bool canWrite, bool canDelete)
+
+// Emitted when admin changes
+event AdminChanged(address indexed oldAdmin, address indexed newAdmin)
+```
+
+### Frontend Components
+
+#### AddEditDialog
+- **Purpose**: Modal dialog for adding new document edits
+- **Features**: Content validation, encryption, blockchain submission
+- **Props**: `open: boolean, onOpenChange: (open: boolean) => void`
+
+#### EditList
+- **Purpose**: Display current document with decryption capability
+- **Features**: Real-time decryption, error handling, refresh functionality
+- **Dependencies**: FHE instance, wallet connection
+
+#### AdminPanel
+- **Purpose**: Administrative interface for permission management
+- **Features**: Grant/revoke permissions, view authorized users
+- **Restrictions**: Admin-only access
+
+## 🚀 Advanced Deployment Guide
+
+### Local Development Setup
+
+1. **Start Local Network**:
+```bash
+npx hardhat node
+```
+
+2. **Deploy Contracts**:
+```bash
+npx hardhat deploy --network hardhat
+```
+
+3. **Start Frontend**:
+```bash
+cd ui
+npm run dev
+```
+
+### Testnet Deployment
+
+1. **Configure Environment**:
+```bash
+cp .env.example .env
+# Edit .env with your keys
+```
+
+2. **Deploy to Sepolia**:
+```bash
+npm run deploy:sepolia
+```
+
+3. **Verify Contract**:
+```bash
+npx hardhat verify --network sepolia CONTRACT_ADDRESS
+```
+
+### Production Deployment
+
+1. **Build Frontend**:
+```bash
+cd ui
+npm run build
+```
+
+2. **Deploy to Vercel/Netlify**:
+```bash
+# Configure your deployment platform with environment variables
+```
+
+## 🔒 Security Considerations
+
+### Encryption Security
+- **ChaCha20**: Industry-standard symmetric encryption with 256-bit keys
+- **FHE Protection**: Passwords encrypted with Zama's Fully Homomorphic Encryption
+- **Public Decryption**: Passwords made publicly decryptable for accessibility
+
+### Access Control
+- **Admin Override**: Admin can always perform all operations
+- **Permission Checks**: Smart contract enforces permission validation
+- **Input Validation**: Content length and format validation prevents attacks
+
+### Best Practices
+- **Environment Variables**: Never commit private keys or API keys
+- **Network Security**: Use HTTPS in production, validate RPC endpoints
+- **Wallet Security**: Encourage hardware wallet usage for mainnet deployment
+
+## 🧪 Testing Strategy
+
+### Unit Tests
+- **Contract Tests**: Permission logic, access control, encryption handling
+- **Utility Tests**: ChaCha20 implementation, byte manipulation, FHE operations
+- **Component Tests**: React component behavior, state management
+
+### Integration Tests
+- **End-to-End Encryption**: Complete encryption/decryption cycles
+- **Multi-User Collaboration**: Permission-based document editing workflows
+- **Cross-Network Compatibility**: Testing on different blockchain networks
+
+### Coverage Goals
+- **Smart Contracts**: >95% code coverage
+- **Frontend Components**: >80% code coverage
+- **Integration Tests**: All critical user workflows covered
 - **Contract Address**: `0x0e4a3add37040add91e983c36720C7B2f0a4cDC5`
 - **Explorer**: [View on Etherscan](https://sepolia.etherscan.io/address/0x0e4a3add37040add91e983c36720C7B2f0a4cDC5)
 
