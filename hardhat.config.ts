@@ -128,9 +128,10 @@ const config: HardhatUserConfig = {
       },
       optimizer: {
         enabled: true,
-        runs: 800,
+        runs: 1000, // Optimized for production deployment
       },
       evmVersion: "cancun",
+      viaIR: true, // Enable Intermediate Representation for better optimization
     },
   },
   typechain: {

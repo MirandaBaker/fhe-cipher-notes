@@ -2,17 +2,19 @@ import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import '@rainbow-me/rainbowkit/styles.css';
+import { Suspense, lazy, useState, useCallback } from 'react';
+import { useAccount } from 'wagmi';
 
 import { config } from './config/wagmi';
 import { Header } from './components/Header';
-import { AdminPanel } from './components/AdminPanel';
-import { EditList } from './components/EditList';
-import { AddEditDialog } from './components/AddEditDialog';
-import { GuidePanel } from './components/GuidePanel';
 import { Button } from './components/ui/button';
 import { Plus, FileText, BookOpen } from 'lucide-react';
-import { useState, useCallback } from 'react';
-import { useAccount } from 'wagmi';
+
+// Lazy load heavy components for better performance
+const AdminPanel = lazy(() => import('./components/AdminPanel').then(module => ({ default: module.AdminPanel })));
+const EditList = lazy(() => import('./components/EditList').then(module => ({ default: module.default })));
+const AddEditDialog = lazy(() => import('./components/AddEditDialog').then(module => ({ default: module.default })));
+const GuidePanel = lazy(() => import('./components/GuidePanel').then(module => ({ default: module.GuidePanel })));
 
 const queryClient = new QueryClient();
 
@@ -73,23 +75,31 @@ function AppContent() {
           {viewMode === 'document' ? (
             <div className="grid gap-6 md:grid-cols-2">
               <div className="md:col-span-2">
-                <EditList />
+                <Suspense fallback={<div className="h-96 bg-muted rounded-lg animate-pulse" />}>
+                  <EditList />
+                </Suspense>
               </div>
               <div className="md:col-span-2">
-                <AdminPanel />
+                <Suspense fallback={<div className="h-32 bg-muted rounded-lg animate-pulse" />}>
+                  <AdminPanel />
+                </Suspense>
               </div>
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2">
               <div className="md:col-span-2">
-                <GuidePanel />
+                <Suspense fallback={<div className="h-64 bg-muted rounded-lg animate-pulse" />}>
+                  <GuidePanel />
+                </Suspense>
               </div>
             </div>
           )}
         </div>
       </main>
 
-      <AddEditDialog open={addEditOpen} onOpenChange={setAddEditOpen} />
+      <Suspense fallback={null}>
+        <AddEditDialog open={addEditOpen} onOpenChange={setAddEditOpen} />
+      </Suspense>
     </div>
   );
 }

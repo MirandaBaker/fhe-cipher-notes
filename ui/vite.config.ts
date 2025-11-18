@@ -13,7 +13,27 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['@zama-fhe/relayer-sdk'],
   },
-  // 移除 server.headers，让浏览器使用默认设置
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunks for better caching
+          'react-vendor': ['react', 'react-dom'],
+          'wagmi-vendor': ['wagmi', '@wagmi/core', '@wagmi/connectors'],
+          'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-select'],
+          'crypto-vendor': ['ethers', '@zama-fhe/relayer-sdk'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
+  },
   define: {
     global: 'globalThis',
   },
