@@ -44,6 +44,13 @@ export const CONTRACT_ABI = [
   },
   {
     "inputs": [{ "internalType": "address", "name": "user", "type": "address" }],
+    "name": "canUserRead",
+    "outputs": [{ "internalType": "bool", "name": "canRead", "type": "bool" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "address", "name": "user", "type": "address" }],
     "name": "canUserWrite",
     "outputs": [{ "internalType": "bool", "name": "canWrite", "type": "bool" }],
     "stateMutability": "view",
@@ -89,8 +96,15 @@ export const CONTRACT_ABI = [
     "type": "function"
   },
   {
-    "inputs": [],
+    "inputs": [{ "internalType": "address", "name": "user", "type": "address" }],
     "name": "grantReadAccess",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "address", "name": "user", "type": "address" }],
+    "name": "revokeReadAccess",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -99,7 +113,8 @@ export const CONTRACT_ABI = [
     "inputs": [
       { "internalType": "address", "name": "user", "type": "address" },
       { "internalType": "bool", "name": "canWrite", "type": "bool" },
-      { "internalType": "bool", "name": "canDelete", "type": "bool" }
+      { "internalType": "bool", "name": "canDelete", "type": "bool" },
+      { "internalType": "bool", "name": "canRead", "type": "bool" }
     ],
     "name": "setPermission",
     "outputs": [],

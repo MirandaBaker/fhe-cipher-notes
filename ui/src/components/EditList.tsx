@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useReadContract, useAccount, useSignTypedData } from 'wagmi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText } from 'lucide-react';
 import { getContractAddress, CONTRACT_ABI } from '@/config/contracts';
 import { useChainId } from 'wagmi';
 import { FileText, RefreshCw } from 'lucide-react';
@@ -38,6 +37,13 @@ function EditList() {
     address: contractAddress,
     abi: CONTRACT_ABI as any,
     functionName: 'getDocumentMeta',
+  });
+
+  const { data: canRead } = useReadContract({
+    address: contractAddress,
+    abi: CONTRACT_ABI as any,
+    functionName: 'canUserRead',
+    args: address ? [address] : undefined,
   });
 
   // Load document metadata on component mount, no auto-decryption
@@ -88,9 +94,16 @@ function EditList() {
     return key;
   };
 
-  const decryptCurrentDocument = async () => {
+  const decryptCurrentDocument = useCallback(async () => {
     if (!instance || !address) {
       console.log('EditList: Cannot decrypt - missing instance or address');
+      return;
+    }
+
+    // Check if user has read permission
+    if (canRead === false) {
+      setDecryptionError('You do not have read permission. Please contact the admin to grant you access.');
+      setIsDecrypting(false);
       return;
     }
 
@@ -152,23 +165,7 @@ function EditList() {
       setIsDecrypting(false);
       console.log('EditList: Decryption completed');
     }
-  };
-
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="py-8 text-center text-muted-foreground">Loading edits...</CardContent>
-      </Card>
-    );
-  }
-
-  if (edits.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-8 text-center text-muted-foreground">No edits yet. Add your first edit!</CardContent>
-      </Card>
-    );
-  }
+  }, [instance, address, contractAddress, chainId, signTypedDataAsync, canRead]);
 
   const handleRefresh = useCallback(async () => {
     console.log('EditList: Manual refresh triggered');
@@ -209,9 +206,23 @@ function EditList() {
     } finally {
       setLoading(false);
     }
-  }, [instance, address, contractAddress, signTypedDataAsync]);
+  }, [instance, address, contractAddress, signTypedDataAsync, refetchDocumentMeta, decryptCurrentDocument]);
 
-  const memoizedDecryptCurrentDocument = useCallback(decryptCurrentDocument, [decryptCurrentDocument]);
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">Loading edits...</CardContent>
+      </Card>
+    );
+  }
+
+  if (edits.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">No edits yet. Add your first edit!</CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -256,9 +267,14 @@ function EditList() {
                 <div className="bg-destructive/10 border border-destructive/20 rounded-md p-4">
                   <div className="flex items-start gap-2">
                     <div className="text-destructive mt-0.5">🔒</div>
-                    <div>
+                    <div className="flex-1">
                       <p className="font-medium text-destructive">Decryption Failed</p>
                       <p className="text-destructive/80 mt-1 text-sm">{decryptionError}</p>
+                      {decryptionError.includes('read permission') && (
+                        <p className="text-xs text-destructive/60 mt-2">
+                          Only users with read permission granted by the admin can decrypt the document.
+                        </p>
+                      )}
                       <div className="mt-3 flex gap-2">
                         <Button
                           variant="outline"

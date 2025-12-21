@@ -11,6 +11,7 @@ interface AuthorizedUser {
   address: string;
   canWrite: boolean;
   canDelete: boolean;
+  canRead: boolean;
 }
 
 export function AdminPanel() {
@@ -19,6 +20,8 @@ export function AdminPanel() {
   const [userAddress, setUserAddress] = useState('');
   const [canWrite, setCanWrite] = useState(true);
   const [canDelete, setCanDelete] = useState(false);
+  const [canRead, setCanRead] = useState(true);
+  const [readAccessAddress, setReadAccessAddress] = useState('');
   const [authorizedUsers, setAuthorizedUsers] = useState<AuthorizedUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -74,10 +77,33 @@ export function AdminPanel() {
       for (const event of events) {
         if (event.args && event.args.user) {
           const userAddr = event.args.user as string;
+          // Read current permissions from contract
+          const [canWrite, canDelete, canRead] = await Promise.all([
+            publicClient.readContract({
+              address: contractAddress,
+              abi: CONTRACT_ABI,
+              functionName: 'canUserWrite',
+              args: [userAddr],
+            }),
+            publicClient.readContract({
+              address: contractAddress,
+              abi: CONTRACT_ABI,
+              functionName: 'canUserDelete',
+              args: [userAddr],
+            }),
+            publicClient.readContract({
+              address: contractAddress,
+              abi: CONTRACT_ABI,
+              functionName: 'canUserRead',
+              args: [userAddr],
+            }),
+          ]);
+          
           userMap.set(userAddr.toLowerCase(), {
             address: userAddr,
-            canWrite: event.args.canWrite as boolean,
-            canDelete: event.args.canDelete as boolean,
+            canWrite: canWrite as boolean,
+            canDelete: canDelete as boolean,
+            canRead: canRead as boolean,
           });
         }
       }
@@ -88,6 +114,7 @@ export function AdminPanel() {
           address: adminAddress,
           canWrite: true,
           canDelete: true,
+          canRead: true,
         });
       }
 
@@ -119,13 +146,14 @@ export function AdminPanel() {
         address: contractAddress,
         abi: CONTRACT_ABI,
         functionName: 'setPermission',
-        args: [userAddress as `0x${string}`, canWrite, canDelete],
+        args: [userAddress as `0x${string}`, canWrite, canDelete, canRead],
       });
   };
 
   useEffect(() => {
     if (isSuccess) {
       setUserAddress('');
+      setReadAccessAddress('');
       loadAuthorizedUsers();
     }
   }, [isSuccess, loadAuthorizedUsers]);
@@ -141,7 +169,7 @@ export function AdminPanel() {
           <Shield className="h-5 w-5" />
           <CardTitle>Admin Panel</CardTitle>
           </div>
-        <CardDescription>Manage user permissions for editing and deleting</CardDescription>
+        <CardDescription>Manage user permissions for reading, editing, and deleting</CardDescription>
         {lastAction && (
           <p className="text-xs text-muted-foreground mt-1">
             Last action: {lastAction}
@@ -177,6 +205,15 @@ export function AdminPanel() {
                 />
               <span className="text-sm">Can Delete</span>
             </label>
+            <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={canRead}
+                  onChange={(e) => setCanRead(e.target.checked)}
+                className="rounded"
+                />
+              <span className="text-sm">Can Read</span>
+            </label>
               </div>
           <Button
             onClick={handleSetPermission}
@@ -186,6 +223,40 @@ export function AdminPanel() {
             {isPending || isConfirming ? 'Processing...' : 'Set Permission'}
           </Button>
             </div>
+
+        <div className="border-t pt-4 space-y-4">
+          <div>
+            <h3 className="font-semibold mb-2">Quick Grant Read Access</h3>
+            <div className="flex gap-2">
+              <Input
+                placeholder="0x... (user address)"
+                value={readAccessAddress}
+                onChange={(e) => setReadAccessAddress(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                onClick={() => {
+                  if (!readAccessAddress || !isAdmin) return;
+                  if (!readAccessAddress.startsWith('0x') || readAccessAddress.length !== 42) {
+                    setLastAction('Invalid address format');
+                    return;
+                  }
+                  setLastAction(`Granting read access to ${readAccessAddress.slice(0, 6)}...${readAccessAddress.slice(-4)}`);
+                  writeContract({
+                    address: contractAddress,
+                    abi: CONTRACT_ABI,
+                    functionName: 'grantReadAccess',
+                    args: [readAccessAddress as `0x${string}`],
+                  });
+                }}
+                disabled={!readAccessAddress || isPending || isConfirming}
+                variant="outline"
+              >
+                Grant Read
+              </Button>
+            </div>
+          </div>
+        </div>
 
         <div className="border-t pt-4">
           <div className="mb-4 flex items-center justify-between">
@@ -208,6 +279,9 @@ export function AdminPanel() {
                   <div>
                     <p className="font-mono text-xs">{user.address}</p>
                     <div className="mt-1 flex gap-2">
+                      {user.canRead && (
+                        <span className="rounded bg-primary/20 px-2 py-0.5 text-xs text-primary font-medium">Read</span>
+                      )}
                       {user.canWrite && (
                         <span className="rounded bg-primary/20 px-2 py-0.5 text-xs text-primary font-medium">Write</span>
                       )}

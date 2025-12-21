@@ -19,6 +19,7 @@ contract FHECipherNotes is SepoliaConfig {
     struct Permission {
         bool canWrite;
         bool canDelete;
+        bool canRead;
     }
 
     address public admin;
@@ -53,20 +54,27 @@ contract FHECipherNotes is SepoliaConfig {
 
     constructor() {
         admin = msg.sender;
-        permissions[msg.sender] = Permission(true, true);
+        permissions[msg.sender] = Permission(true, true, true);
     }
 
-    /// @notice Set write and delete permissions for a user
+    /// @notice Set write, delete, and read permissions for a user
     /// @param user The address to grant/revoke permissions
     /// @param canWrite Whether the user can write/edit
     /// @param canDelete Whether the user can delete edits
+    /// @param canRead Whether the user can read/decrypt the document
     function setPermission(
         address user,
         bool canWrite,
-        bool canDelete
+        bool canDelete,
+        bool canRead
     ) external onlyAdmin {
-        permissions[user] = Permission(canWrite, canDelete);
+        permissions[user] = Permission(canWrite, canDelete, canRead);
         emit PermissionUpdated(user, canWrite, canDelete);
+        
+        // If granting read permission, also grant FHE ACL access
+        if (canRead && _currentDocument.exists) {
+            FHE.allow(_currentDocument.encPassword, user);
+        }
     }
 
     /// @notice Update the document (overwrites previous content)
@@ -95,8 +103,10 @@ contract FHECipherNotes is SepoliaConfig {
         // ACL: allow contract and editor to access the encrypted password
         FHE.allowThis(_currentDocument.encPassword);
         FHE.allow(_currentDocument.encPassword, msg.sender);
-        // Make password publicly decryptable for all users, no separate authorization needed
-        FHE.makePubliclyDecryptable(_currentDocument.encPassword);
+        // Grant read access to admin
+        FHE.allow(_currentDocument.encPassword, admin);
+        // Grant read access to all users with canRead permission
+        // Note: This is done on-demand via grantReadAccess or setPermission
 
         emit DocumentUpdated(msg.sender, uint64(block.timestamp));
     }
@@ -107,12 +117,25 @@ contract FHECipherNotes is SepoliaConfig {
         _currentDocument.exists = false;
     }
 
-    /// @notice Grant read access to the caller (all users can read/decrypt)
-    /// @dev This allows any user to decrypt the document content
-    function grantReadAccess() external {
+    /// @notice Grant read access to a user (admin only)
+    /// @param user The address to grant read access
+    /// @dev This allows the specified user to decrypt the document content
+    function grantReadAccess(address user) external onlyAdmin {
         require(_currentDocument.exists, "Document does not exist");
-        // Grant FHE decryption permission to caller
-        FHE.allow(_currentDocument.encPassword, msg.sender);
+        // Grant FHE decryption permission to user
+        FHE.allow(_currentDocument.encPassword, user);
+        // Update permission struct
+        permissions[user].canRead = true;
+        emit PermissionUpdated(user, permissions[user].canWrite, permissions[user].canDelete);
+    }
+    
+    /// @notice Revoke read access from a user (admin only)
+    /// @param user The address to revoke read access from
+    function revokeReadAccess(address user) external onlyAdmin {
+        require(_currentDocument.exists, "Document does not exist");
+        // Note: FHE.allow cannot be revoked, but we can track it in permissions
+        permissions[user].canRead = false;
+        emit PermissionUpdated(user, permissions[user].canWrite, permissions[user].canDelete);
     }
 
     /// @notice Get the current document metadata
@@ -161,6 +184,13 @@ contract FHECipherNotes is SepoliaConfig {
     /// @return canDelete Whether the user can delete
     function canUserDelete(address user) external view returns (bool canDelete) {
         return permissions[user].canDelete || user == admin;
+    }
+
+    /// @notice Check if a user has read permission
+    /// @param user The user address
+    /// @return canRead Whether the user can read/decrypt
+    function canUserRead(address user) external view returns (bool canRead) {
+        return permissions[user].canRead || user == admin;
     }
 
     /// @notice Get admin address
