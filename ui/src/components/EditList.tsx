@@ -73,10 +73,10 @@ function EditList() {
         console.error('Failed to load document:', error);
         setEdits([]);
         setFullDocument('');
-    } finally {
-      setLoading(false);
-    }
-  }, [instance, address, contractAddress, signTypedDataAsync, refetchDocumentMeta]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
     loadDocument();
   }, [documentMeta, contractAddress, chainId]);
@@ -243,7 +243,7 @@ function EditList() {
                 {isDecrypting && ' (decrypting...)'}
               </p>
             </div>
-            <div className="mt-3 rounded-md bg-muted p-4 text-sm whitespace-pre-wrap min-h-[200px] border">
+            <div className="mt-3 rounded-md bg-muted/50 p-4 text-sm whitespace-pre-wrap min-h-[200px] border border-primary/10">
               {isDecrypting && !fullDocument ? (
                 <div className="flex items-center gap-3 text-muted-foreground">
                   <RefreshCw className="h-5 w-5 animate-spin" />

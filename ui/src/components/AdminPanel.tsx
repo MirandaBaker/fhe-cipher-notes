@@ -209,10 +209,10 @@ export function AdminPanel() {
                     <p className="font-mono text-xs">{user.address}</p>
                     <div className="mt-1 flex gap-2">
                       {user.canWrite && (
-                        <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">Write</span>
+                        <span className="rounded bg-primary/20 px-2 py-0.5 text-xs text-primary font-medium">Write</span>
                       )}
                       {user.canDelete && (
-                        <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-800">Delete</span>
+                        <span className="rounded bg-destructive/20 px-2 py-0.5 text-xs text-destructive font-medium">Delete</span>
                 )}
                     </div>
                   </div>
